@@ -376,9 +376,11 @@ class API:
     def get_backtest_results(self, folder: str = ""):
         """Verilen klasörün (veya aktif testin) sonuçlarını döner."""
         global _bt_active_dir
-        path = folder if folder else (_bt_active_dir or "")
+        if folder:
+            path = folder if os.path.isabs(folder) else os.path.join(BT_BASE_DIR, folder)
+        else:
+            path = _bt_active_dir or ""
         if not path or not os.path.exists(path):
-            # Geriye dönük uyumluluk: eski düz klasörü dene
             path = BT_BASE_DIR
         return _load_bt_dir(path)
 
