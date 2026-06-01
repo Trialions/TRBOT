@@ -22,8 +22,9 @@ except ImportError:
     start_agent = stop_agent = lambda *a: None
     agent_is_active = lambda: False
 
-CONFIG_PATH    = "config_online.yaml"
-BT_BASE_DIR    = "backtest_results"
+_APP_DIR       = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH    = os.path.join(_APP_DIR, "config_online.yaml")
+BT_BASE_DIR    = os.path.join(_APP_DIR, "backtest_results")
 _log_buffer    = []
 _log_lock      = threading.Lock()
 _bt_proc       = None
@@ -339,8 +340,7 @@ class API:
                     stderr=subprocess.STDOUT,
                     text=True, encoding="utf-8", errors="replace",
                     bufsize=1,
-                    env=_bt_env,
-                    cwd=os.path.dirname(os.path.abspath(__file__))
+                    env=_bt_env
                 )
                 for line in _bt_proc.stdout:
                     line = line.rstrip()
