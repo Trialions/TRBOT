@@ -14,6 +14,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+
 from strategy_core import score_symbol
 from logger import log_info, log_error
 
@@ -26,6 +27,7 @@ _SCRIPT_DIR = _os.path.dirname(_os.path.abspath(__file__))
 BINANCE_API   = "https://api.binance.com"
 REQUEST_DELAY = 0.12
 CACHE_DIR     = Path(_SCRIPT_DIR) / "backtest_data"
+
 
 
 # ──────────────────────────────────────────────
@@ -314,29 +316,28 @@ class Backtester:
             mult   = 1 if pos["side"] == "LONG" else -1
             change = (price - pos["entry"]) / pos["entry"] * mult
 
-            # TP1 sonrası breakeven; öncesinde normal SL
-            eff_sl = 0.0 if pos.get("tp1_done") else pos.get("sl_pct", self.sl_pct)
-            if change <= -eff_sl:
-                reason = "Breakeven" if pos.get("tp1_done") else "SL"
-                self._close(symbol, price, change, reason, ts_ms)
-                return
+            if pos.get("tp1_done"):
+                be_buffer = (self.commission + self.slippage) * 2
+                if change <= -be_buffer:
+                    self._close(symbol, price, change, "Breakeven", ts_ms)
+                    return
+            else:
+                if change <= -pos.get("sl_pct", self.sl_pct):
+                    self._close(symbol, price, change, "SL", ts_ms)
+                    return
             if age >= self.max_hold_sec:
                 self._close(symbol, price, change, "MaxHold", ts_ms)
                 return
-
-            # Partial TP: TP1 seviyesine ulaşınca pozisyonun bir kısmını kapat
             if self.ptp_enabled and not pos.get("tp1_done"):
                 tp1_level = pos.get("sl_pct", self.sl_pct) * self.ptp_r_mult
                 if change >= tp1_level:
                     close_qty = pos["qty"] * self.ptp_close_pct
-                    self._close(symbol, price, change, "TP1", ts_ms,
-                                close_qty=close_qty)
+                    self._close(symbol, price, change, "TP1", ts_ms, close_qty=close_qty)
                     p = self.open_positions.get(symbol)
                     if p:
                         p["tp1_done"]     = True
                         p["trail_locked"] = change
                     return
-
             if self.trail and change > 0:
                 locked = pos.get("trail_locked")
                 if locked is None or change > locked + self.trail_step:
@@ -410,7 +411,7 @@ class Backtester:
         qty      = full_qty if close_qty is None else min(close_qty, full_qty)
         partial  = close_qty is not None and qty < full_qty
         if partial:
-            pos["qty"] = full_qty - qty   # kalan pozisyon açık kalır
+            pos["qty"] = full_qty - qty
         else:
             self.open_positions.pop(symbol, None)
         entry    = pos["entry"]
@@ -436,7 +437,7 @@ class Backtester:
             "slippage":   round(slippage, 4),
             "net_pnl":    round(net, 3),
             "reason":     reason,
-            "partial":    partial,
+            "partial":    partial if close_qty is not None else False,
             "score":      round(pos["score"], 2),
             "sl_pct":     round(pos.get("sl_pct", self.sl_pct) * 100, 2),
             "open_time":  datetime.utcfromtimestamp(pos["ts_open"]).strftime("%Y-%m-%d %H:%M"),
