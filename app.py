@@ -330,12 +330,17 @@ class API:
             global _bt_proc
             _push_log(f"[Backtest] Başlatıldı → {out_dir}")
             try:
+                _bt_env = dict(os.environ)
+                _bt_env["PYTHONIOENCODING"] = "utf-8"
+                _bt_env["PYTHONUTF8"] = "1"
                 _bt_proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True, encoding="utf-8", errors="replace",
-                    bufsize=1
+                    bufsize=1,
+                    env=_bt_env,
+                    cwd=os.path.dirname(os.path.abspath(__file__))
                 )
                 for line in _bt_proc.stdout:
                     line = line.rstrip()
