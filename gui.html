@@ -732,6 +732,7 @@ async function pollBacktest() {
   if (st.running) {
     const elapsed = (Date.now() - _btStart) / 1000;
     const pct = Math.min(elapsed / 600 * 100, 95);
+    document.getElementById('bt-progress-fill').style.width = pct.toFixed(0) + '%';
     document.getElementById('bt-eta').textContent = `~${Math.max(0, Math.round(600 - elapsed))}s`;
   } else {
     _btRunning = false;
