@@ -413,4 +413,4 @@ if __name__ == "__main__":
         min_size = (1000, 700),
         resizable= True,
     )
-    webview.start(debug=True)
+    webview.start(debug=False)
